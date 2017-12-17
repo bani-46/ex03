@@ -1,0 +1,3 @@
+program btest2 ; 
+var x:int;
+begin end.

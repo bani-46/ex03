@@ -1,0 +1,3 @@
+program btest4 ; 
+var x:array [xxx] of integer;
+begin end.

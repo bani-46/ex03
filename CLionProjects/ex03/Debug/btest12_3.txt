@@ -1,0 +1,5 @@
+program btest13 ; 
+var x:array [100] of integer;
+begin
+a:= 100
+end.

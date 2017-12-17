@@ -1,0 +1,11 @@
+[INFO]Open File.
+program assignchar ;
+    var x , y : char ;
+begin
+    x := 'X' ;
+    y := 'Y' 
+end .
+
+[Result]Final read:EOF
+[Result]Search end of line:4.
+[INFO]Close File.

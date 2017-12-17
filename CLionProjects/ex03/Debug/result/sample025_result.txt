@@ -1,0 +1,14 @@
+[INFO]Open File.
+program ifst ;
+    var ch : char ;
+begin
+    readln ( ch ) ;
+    if ch = 'a' then writeln ( 'It is ''a'' ' ) ;
+    
+    else 
+[PARSE_ERROR][Compound_Statement]Statement is not found.
+
+[PARSE_ERROR][Block]Compound_statement is not found.
+[INFO]Block Final read:'else'
+[Result]Search end of line:6.
+[INFO]Close File.

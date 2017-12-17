@@ -1,0 +1,5 @@
+program btest9 ; 
+var x:array [100] of integer;
+begin 
+while a  begin ; end
+end.

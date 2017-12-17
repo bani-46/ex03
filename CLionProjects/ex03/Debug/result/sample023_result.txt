@@ -1,0 +1,9 @@
+[INFO]Open File.
+program assignchar ;
+    var x , y : char ;
+;
+
+[PARSE_ERROR][Block]Compound_statement is not found.
+[INFO]Block Final read:';'
+[Result]Search end of line:2.
+[INFO]Close File.

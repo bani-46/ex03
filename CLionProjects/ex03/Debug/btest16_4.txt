@@ -1,0 +1,5 @@
+program btest16 ; 
+var x:array [100] of integer;
+begin
+readln(a[a=100])
+end.

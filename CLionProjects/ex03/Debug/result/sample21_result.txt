@@ -1,0 +1,10 @@
+[INFO]Open File.
+program assigninteger ;
+    var n : integer ;
+begin
+    n := 1 
+end .
+
+[Result]Final read:EOF
+[Result]Search end of line:2.
+[INFO]Close File.

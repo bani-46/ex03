@@ -1,0 +1,13 @@
+[INFO]Open File.
+program Write ;
+begin
+    ;
+    writeln ( 'It' s 
+[PARSE_ERROR][Output_statement]',' is not found.
+
+[PARSE_ERROR][Compound_Statement]Statement is not found.
+
+[PARSE_ERROR][Block]Compound_statement is not found.
+[INFO]Block Final read:'NAME'
+[Result]Search end of line:3.
+[INFO]Close File.

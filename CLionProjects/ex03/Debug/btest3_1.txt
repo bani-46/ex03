@@ -1,0 +1,3 @@
+program btest3 ; 
+var x,100:integer;
+begin end.

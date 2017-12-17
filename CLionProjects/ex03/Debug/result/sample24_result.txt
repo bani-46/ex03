@@ -1,0 +1,9 @@
+[INFO]Open File.
+program Write ;
+begin
+    writeln ( 'It''s OK?' ) 
+end .
+
+[Result]Final read:EOF
+[Result]Search end of line:2.
+[INFO]Close File.

@@ -1,0 +1,5 @@
+program btest16 ; 
+var x:array [100] of integer;
+begin
+read(a
+end.

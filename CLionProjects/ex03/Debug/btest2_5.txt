@@ -1,0 +1,3 @@
+program btest2 ; 
+var x,y:integer;z:boolean;a:char;
+begin end.

@@ -1,0 +1,12 @@
+[INFO]Open File.
+program assignboolean ;
+    var x , y : boolean ;
+begin
+    x := true ;
+    y := false ;
+    
+end .
+
+[Result]Final read:EOF
+[Result]Search end of line:11.
+[INFO]Close File.

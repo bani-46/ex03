@@ -1,0 +1,18 @@
+[INFO]Open File.
+program sample28p ;
+    procedure p ;
+    begin
+        writeln ( 'Hello!' ) 
+    end ;
+    procedure q ;
+    begin
+        writeln ( 'Everyone!' ) 
+    end ;
+begin
+    call p ;
+    call q 
+end .
+
+[Result]Final read:EOF
+[Result]Search end of line:4.
+[INFO]Close File.

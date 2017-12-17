@@ -1,0 +1,5 @@
+program btest8 ; 
+var x:array [100] of integer;
+begin 
+if a then begin ; end
+end.

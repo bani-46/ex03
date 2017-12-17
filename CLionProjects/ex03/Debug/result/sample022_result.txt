@@ -1,0 +1,9 @@
+[INFO]Open File.
+program assignboolean ;
+    var x y 
+[PARSE_ERROR][Variable_declation]':' is not found.
+
+[PARSE_ERROR][Block]Compound_statement is not found.
+[INFO]Block Final read:'NAME'
+[Result]Search end of line:2.
+[INFO]Close File.

@@ -1,0 +1,1 @@
+proram btest1 ; begin end.

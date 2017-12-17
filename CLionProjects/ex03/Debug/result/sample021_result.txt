@@ -1,0 +1,5 @@
+[INFO]Open File.
+program assigninteger     var 
+[PARSE_ERROR][Parse_program]';' is not found.
+[Result]Search end of line:2.
+[INFO]Close File.

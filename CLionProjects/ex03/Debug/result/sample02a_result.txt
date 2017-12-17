@@ -1,0 +1,33 @@
+[INFO]Open File.
+program TeaBreak ;
+begin
+    ;
+    ;
+    ;
+    ;
+    ;
+    ;
+    ;
+    ;
+    ;
+    ;
+    writeln ( 'Say "BREAK!!" ' ) ;
+    ;
+    ;
+    ;
+    ;
+    ;
+    ;
+    ;
+    ;
+    ;
+    ;
+    break 
+[PARSE_ERROR][Exit_statement]Found 'break' but not iteration.
+
+[PARSE_ERROR][Compound_Statement]Statement is not found.
+
+[PARSE_ERROR][Block]Compound_statement is not found.
+[INFO]Block Final read:'break'
+[Result]Search end of line:10.
+[INFO]Close File.

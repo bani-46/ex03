@@ -1,0 +1,8 @@
+program btest6 ; 
+var x:array [100] of integer;
+procedure test (x integer);var y:integer; 
+begin 
+end;
+
+begin 
+end.
