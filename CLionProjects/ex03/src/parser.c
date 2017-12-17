@@ -1,8 +1,5 @@
 #include "compiler.h"
 
-#define NORMAL 1
-#define ERROR -1
-
 int token;
 int iteration_flag = 0;
 
@@ -16,6 +13,10 @@ char *tokenstr[NUMOFTOKEN+1] = {
 };
 
 int parse_program(){//ahead_scan
+    init_namelist();
+    init_globalidtab();
+    init_localidtab();
+
 	/*progarm 名前 ; ブロック.*/
 	token = scan();
 	pretty_print();
@@ -57,10 +58,15 @@ int block(){
 	return NORMAL;
 }
 
+int is_var = 0;//todo
+
 int variable_declaration(){//ahead_scan
 	/*var 変数名の並び : 型 ; {変数名の並び : 型 ;}*/
+    int mem_type;
+
 	if(token != TVAR)
 		return ERROR;
+    is_var = 1;
 	token = scan();
 	pretty_print();
 	do{
@@ -70,20 +76,31 @@ int variable_declaration(){//ahead_scan
 			return error_parse("[Variable_declation]':' is not found.");
 		token = scan();
 		pretty_print();
-		if(type() == ERROR)
+        mem_type = type();
+		if(mem_type == ERROR)
 			return error_parse("[Variable_declation]Type is not found.");
 		if(token != TSEMI)
 			return error_parse("[Variable_declation]';' is not found.");
 		token = scan();
 		pretty_print();
 	}while(token == TNAME);
-	return NORMAL;
+    print_namelist();//todo
+    insert_idlist(NULL,mem_type,var,global);
+    print_idlist();
+    free_namelist();
+	is_var = 0;
+    return NORMAL;
 }
 
 int variable_names(){//ahead_scan
 	/*変数名 {, 変数名}*/
 	if(token != TNAME)
 		return ERROR;
+    if(is_var) {
+        if(insert_namelist(string_attr,get_linenum())==ERROR){
+            return error_variable("Overload.");
+        }
+    }
 	token = scan();
 	pretty_print();
 	while(token == TCOMMA){
@@ -91,6 +108,11 @@ int variable_names(){//ahead_scan
 		pretty_print();
 		if(token != TNAME)
 			return error_parse("[Variable_names]Varible names is not found.");
+        if(is_var) {
+            if(insert_namelist(string_attr,get_linenum())==ERROR){
+                return error_variable("Overload.");
+            }
+        }
 		token = scan();
 		pretty_print();
 	}
@@ -99,25 +121,34 @@ int variable_names(){//ahead_scan
 
 int type(){//ahead_scan
 	/*標準型|配列型*/
-	if(standard_type() == ERROR){
-		if(array_type() == ERROR)
-			return ERROR;
-	}
-	token = scan();
-	pretty_print();
-	return NORMAL;
+    int return_num;
+    if(return_num = standard_type() == ERROR) {
+        if ((return_num = array_type()) == ERROR)
+            return ERROR;
+    }
+    token = scan();
+    pretty_print();
+    return return_num;
 }
 
 int standard_type(){
 	/*integer | boolean | char*/
-	if(token != TINTEGER && token != TBOOLEAN && token != TCHAR)
-		return ERROR;
-	return NORMAL;
+    if(token == TINTEGER){
+        return TPINT;
+    }
+    else if(token == TBOOLEAN){
+        return TPBOOL;
+    }
+    else if(token == TCHAR){
+        return TPCHAR;
+    }
+	else return ERROR;
 }
 
 int array_type(){
 	/*array '[' 符号なし整数 ']' of 標準型*/
-	if(token != TARRAY)
+	int return_num;
+    if(token != TARRAY)
 		return ERROR;
 	token = scan();
 	pretty_print();
@@ -137,9 +168,8 @@ int array_type(){
 		return error_parse("[Array_type]'of' is not found.");
 	token = scan();
 	pretty_print();
-	if(standard_type() == ERROR)
-		return error_parse("[Array_type]Standard_type is not found.");
-	return NORMAL;
+    return_num = standard_type();
+	return return_num;
 }
 
 int subprogram_declaration(){//ahead_scan
@@ -694,4 +724,9 @@ void pretty_print(){
 int error_parse(char *mes){
 	printf("\n[PARSE_ERROR]%s\n",mes);
 	return ERROR;
+}
+
+int error_variable(char *mes){
+    printf("\n[VARIABLE_ERROR]%s\n",mes);
+    return ERROR;
 }

@@ -6,6 +6,9 @@
 #define MAXSTRSIZE 1024
 #define MAXNUM 32767
 
+#define NORMAL 1
+#define ERROR -1
+
 /* Token */
 #define	TNAME		1	/* Name : Alphabet { Alphabet | Digit } */
 #define	TPROGRAM	2	/* program : Keyword */
@@ -71,10 +74,6 @@
 
 #define NUMOFTYPE 8
 
-enum{
-    global=0,local
-};
-
 /* token-list.c */
 #define KEYWORDSIZE	28
 
@@ -97,9 +96,37 @@ extern FILE *fp;
 extern int cbuf;
 
 /* id-list.c */
+enum{
+	global=0,local
+};
+
+enum{
+	var=0,formal
+};
+
+/* namelist */
+extern void init_namelist();
+extern struct NAMELIST *add_namelist(char *_name,int _defline,struct NAMELIST *nl);
+extern int insert_namelist(char *_name,int _defline);
+extern void print_namelist();
+extern void free_namelist();
+extern int search_namelist(char *_name);
+/* ID list */
 extern void init_globalidtab();
 extern void init_localidtab();
-extern struct ID *search_idtab(char *np,int scope);
+struct ID *add_idlist(char *_name,
+					  char *_procname,
+					  int _type,
+					  int _ispara,
+					  int _defline,
+					  struct ID *il);
+extern int insert_idlist(char *_procname,
+						 int _type,
+						 int _ispara,
+						 int scope);
+extern int search_idlist(int _scope);
+extern void print_idlist();
+
 extern void id_countup(char *np);
 extern void print_idtab();
 extern void release_idtab();
@@ -140,4 +167,5 @@ extern int output_statement();
 extern int output_format();
 
 extern int error_parse(char *mes);
+extern int error_variable(char *mes);
 extern void pretty_print();
