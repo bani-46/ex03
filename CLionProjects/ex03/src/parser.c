@@ -46,19 +46,26 @@ int parse_program(){//ahead_scan
 	else{
 		printf("\n\n[Result]Final read:EOF\n");
 	}
+    print_idlist(local);
+    print_idlist(global);
 	return NORMAL;
 }
 
-//todo not scan
 int block(){
 	/*{変数宣言部 | 副プログラム宣言}複合文*/
-	while((variable_declaration() != ERROR) || (subprogram_declaration() != ERROR));
-	if (compound_statement() == ERROR)
+	while((variable_declaration() != ERROR) || (subprogram_declaration() != ERROR)){
+        reset_flags();
+    }
+    if (compound_statement() == ERROR)
 		return error_parse("[Block]Compound_statement is not found.");
 	return NORMAL;
 }
-
-int is_var = 0;//todo
+//todo
+int is_array = 0;
+int is_para = var;
+int scope = global;
+int array_size;
+char procname[MAXSTRSIZE];
 
 int variable_declaration(){//ahead_scan
 	/*var 変数名の並び : 型 ; {変数名の並び : 型 ;}*/
@@ -66,7 +73,6 @@ int variable_declaration(){//ahead_scan
 
 	if(token != TVAR)
 		return ERROR;
-    is_var = 1;
 	token = scan();
 	pretty_print();
 	do{
@@ -81,14 +87,16 @@ int variable_declaration(){//ahead_scan
 			return error_parse("[Variable_declation]Type is not found.");
 		if(token != TSEMI)
 			return error_parse("[Variable_declation]';' is not found.");
-		token = scan();
-		pretty_print();
+
+        if((insert_idlist(procname,mem_type,is_para,scope,is_array,array_size)) == ERROR){
+            return error_variable("[Variable_declation]Overload.");
+        }
+        token = scan();
+        pretty_print();
+
+        reset_array();
+        free_namelist();
 	}while(token == TNAME);
-    print_namelist();//todo
-    insert_idlist(NULL,mem_type,var,global);
-    print_idlist();
-    free_namelist();
-	is_var = 0;
     return NORMAL;
 }
 
@@ -96,10 +104,8 @@ int variable_names(){//ahead_scan
 	/*変数名 {, 変数名}*/
 	if(token != TNAME)
 		return ERROR;
-    if(is_var) {
-        if(insert_namelist(string_attr,get_linenum())==ERROR){
-            return error_variable("Overload.");
-        }
+    if(insert_namelist(string_attr,get_linenum())==ERROR){
+        return error_variable("[Variable_names]Overload.");
     }
 	token = scan();
 	pretty_print();
@@ -108,10 +114,8 @@ int variable_names(){//ahead_scan
 		pretty_print();
 		if(token != TNAME)
 			return error_parse("[Variable_names]Varible names is not found.");
-        if(is_var) {
-            if(insert_namelist(string_attr,get_linenum())==ERROR){
-                return error_variable("Overload.");
-            }
+        if(insert_namelist(string_attr,get_linenum())==ERROR){
+            return error_variable("[Variable_names]Overload.");
         }
 		token = scan();
 		pretty_print();
@@ -122,9 +126,12 @@ int variable_names(){//ahead_scan
 int type(){//ahead_scan
 	/*標準型|配列型*/
     int return_num;
-    if(return_num = standard_type() == ERROR) {
-        if ((return_num = array_type()) == ERROR)
+    if((return_num = standard_type()) == ERROR) {
+        is_array = 1;
+        if ((return_num = array_type()) == ERROR) {
+            is_array = 0;
             return ERROR;
+        }
     }
     token = scan();
     pretty_print();
@@ -158,7 +165,11 @@ int array_type(){
 	pretty_print();
 	if(token != TNUMBER)
 		return error_parse("[Array_type]Number is not found.");
-	token = scan();
+	array_size = num_attr;
+    if(array_size < 1){
+        return error_variable("[ARRAY_SIZE]Number is too small.");
+    }
+    token = scan();
 	pretty_print();
 	if(token != TRSQPAREN)
 		return error_parse("[Array_type]']' is not found.");
@@ -176,11 +187,13 @@ int subprogram_declaration(){//ahead_scan
 	//"procedure" 手続き名 [ 仮引数部 ] ";" [ 変数宣言部 ] 複合文 ";"
 	if(token != TPROCEDURE)
 		return ERROR;
-	token = scan();
+    scope = local;
+    token = scan();
 	pretty_print();
 	if(token != TNAME)
 		return error_parse("[Subprogram_declation]Procedure name is not found.");
-	token = scan();
+	strcpy(procname,string_attr);
+    token = scan();
 	pretty_print();
 	if(token != TSEMI && formal_parameters()!= ERROR){
 		token = scan();
@@ -200,40 +213,49 @@ int subprogram_declaration(){//ahead_scan
 		return error_parse("[Subprogram_declation]';' is not found.");
 	token = scan();
 	pretty_print();
+    copy_locallist();
+    reset_flags();
 	return NORMAL;
 }
 
 int formal_parameters(){//ahead_scan
 	/*'('変数名の並び　: 型 { ; 変数名の並び : 型} ')'*/
-	if(token != TLPAREN)
+	int mem_type = 0;
+    int is_iterate = 0;
+
+    if(token != TLPAREN)
 		return ERROR;
-	token = scan();
+    token = scan();
 	pretty_print();
-	if(variable_names() == ERROR)
-		return error_parse("[Formal_parameters]Variable_names is not found.");
-	if(token != TCOLON)
-		return error_parse("[Formal_parameters]':' is not found.");
-	token = scan();
-	pretty_print();
-	if(type() == ERROR)
-		return error_parse("[Formal_parameters]Type is not found.");
-	while(token != TRPAREN){
-		if(token != TSEMI)
-			return error_parse("[Formal_parameters]';' is not found.");;
-		token = scan();
-		pretty_print();
-		if(variable_names() == ERROR)
-			return error_parse("[Formal_parameters]Variable_names is not found.");
-		if(token != TCOLON)
-			return error_parse("[Formal_parameters]':' is not found.");
-		token = scan();
-		pretty_print();
-		if(type() == ERROR)
-			return error_parse("[Formal_parameters]Type is not found.");
-	}
+    is_para = formal;
+	do {
+        if(is_iterate){
+            if(token != TSEMI)
+                return error_parse("[Formal_parameters]';' is not found.");
+            token = scan();
+            pretty_print();
+        }
+        if (variable_names() == ERROR)
+            return error_parse("[Formal_parameters]Variable_names is not found.");
+        if (token != TCOLON)
+            return error_parse("[Formal_parameters]':' is not found.");
+        token = scan();
+        pretty_print();
+        mem_type = type();
+        if (mem_type == ERROR)
+            return error_parse("[Formal_parameters]Type is not found.");
+        if(is_array)
+            return error_variable("[Formal_parameters]Can`t use arraytype.");
+        if((insert_idlist(procname, mem_type, is_para, scope, is_array, array_size))==ERROR){
+            return error_variable("[Formal_parameters]Overload.");
+        }
+        reset_array();
+        free_namelist();
+        if(is_iterate == 0)is_iterate = 1;
+    }while(token != TRPAREN);
+    is_para = 0;
 	return NORMAL;
 }
-
 
 int compound_statement(){
 	//"begin" 文 { ";" 文 } "end"
@@ -719,6 +741,7 @@ void pretty_print(){
 		}
 		break;
 	}
+
 }
 
 int error_parse(char *mes){
@@ -729,4 +752,17 @@ int error_parse(char *mes){
 int error_variable(char *mes){
     printf("\n[VARIABLE_ERROR]%s\n",mes);
     return ERROR;
+}
+
+void reset_flags(){
+    is_array = 0;
+    array_size = 0;
+    is_para = var;
+    scope = global;
+    memset(procname,'\0',sizeof(procname));
+}
+
+void reset_array(){
+    is_array = 0;
+    array_size = 0;
 }

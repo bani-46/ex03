@@ -60,6 +60,7 @@ int insert_namelist(char *_name,int _defline){
 void print_namelist(){
     struct NAMELIST *nl = name_list->nextp;
     while(nl != NULL){
+        printf("\n");
         printf("[namelist]%s\tat line:%d\n",nl->name,nl->defline);
         nl = nl->nextp;
     }
@@ -84,17 +85,18 @@ void free_namelist(){
         free(nl);
         nl = temp;
     }
+    name_list->nextp = NULL;
  }
 
 void init_globalidtab() {		/* Initialise the table */
     struct ID *il;
-    il = add_idlist("",NULL,0,0,0,NULL);
+    il = add_idlist("\0","\0",0,0,0,0,0,0,NULL);
     globalidroot = il;
 }
 
 void init_localidtab() {		/* Initialise the table */
     struct ID *il;
-    il = add_idlist("",NULL,0,0,0,NULL);
+    il = add_idlist("\0","\0",0,0,0,0,0,0,NULL);
     localidroot = il;
 }
 
@@ -102,21 +104,66 @@ struct ID *add_idlist(char *_name,
                       char *_procname,
                       int _type,
                       int _ispara,
+                      int _isproc,
                       int _defline,
+                      int _isarray,
+                      int arraysize,
                       struct ID *il) {
     struct ID *new;
-    char *c;
-    struct TYPE *typelist;
+    char *c,*pc;
+    struct TYPE *typelist,*arraytype,*proctype;
 
     new = (struct ID *) malloc(sizeof(struct ID));
     typelist = (struct TYPE *) malloc(sizeof(struct TYPE));
-    c = (char *) malloc(strlen(_name) + 1);
+    c = (char *) malloc(strlen(_name) + strlen(_procname) + 2);
+    pc = (char *) malloc(strlen(_procname) + 1);
 
     strcpy(c, _name);
     new->name = c;
-    new->procname = _procname;
+    strcpy(pc,_procname);
+    new->procname = pc;
     new->itp = typelist;
-    new->itp->ttype = _type;
+    /*proc*/
+    if(_isproc) {
+        new->itp->ttype = TPPROC;
+        proctype = (struct TYPE *) malloc(sizeof(struct TYPE));
+        if(_isarray) {
+            proctype->ttype = TPARRAY;
+        }else{
+            proctype->ttype = _type;
+        }
+        new->itp->paratp = proctype;
+    }
+    /*array*/
+    if (_isarray) {
+        new->itp->ttype = TPARRAY;
+        arraytype = (struct TYPE *) malloc(sizeof(struct TYPE));
+        switch (_type) {
+            case TPINT:
+                arraytype->ttype = TPARRAYINT;
+                break;
+            case TPCHAR:
+                arraytype->ttype = TPARRAYCHAR;
+                break;
+            case TPBOOL:
+                arraytype->ttype = TPARRAYBOOL;
+                break;
+            default:
+                break;
+        }
+        if(_isproc) {
+            new->itp->paratp->etp = arraytype;
+            new->itp->paratp->etp->arraysize = arraysize;
+        }
+        else{
+            new->itp->etp = arraytype;
+            new->itp->arraysize = arraysize;
+        }
+    }
+    if (!_isarray && !_isproc) {
+        new->itp->ttype = _type;
+    }
+
     new->is_para = _ispara;
     new->definenum = _defline;
 
@@ -126,7 +173,9 @@ struct ID *add_idlist(char *_name,
 int insert_idlist(char *_procname,
                   int _type,
                   int _ispara,
-                  int scope){
+                  int scope,
+                  int _isarray,
+                  int array_size){
     if(search_idlist(scope)==ERROR){
         return ERROR;
     }
@@ -138,7 +187,9 @@ int insert_idlist(char *_procname,
 
     while(il->nextp != NULL)il = il->nextp;
     while(nl != NULL) {
-        il->nextp = add_idlist(nl->name,_procname, _type, _ispara,nl->defline,NULL);
+        il->nextp = add_idlist(nl->name, _procname, _type,
+                               _ispara, scope, nl->defline,
+                               _isarray, array_size, NULL);
         il = il->nextp;
         nl = nl->nextp;
     }
@@ -154,7 +205,7 @@ int search_idlist(int _scope){
     while(il != NULL){
         nl = name_list->nextp;
         while(nl != NULL) {
-            if(il->name == NULL)break;
+            if(il->name == NULL)break;//todo
             if (strcmp(nl->name, il->name) == 0) {
                 return ERROR;
             }
@@ -165,12 +216,52 @@ int search_idlist(int _scope){
     return NORMAL;
 }
 
-void print_idlist(){
-    struct ID *il = globalidroot->nextp;
+void copy_locallist() {
+    struct ID *gl, *ll;
+    gl = globalidroot;
+    ll = localidroot->nextp;
+    char *str;
+    while (gl->nextp != NULL)gl = gl->nextp;
+    gl->nextp = ll;
+    while(gl->nextp != NULL){
+        gl = gl->nextp;
+        str = strcat(gl->name,".");//todo . or :
+        gl->name = strcpy(gl->name, strcat(str, gl->procname));
+    }
+    localidroot->nextp = NULL;
+}
+
+void print_idlist(int _scope){
+    struct ID *il;
+    if(_scope == 0){
+        il = globalidroot->nextp;
+        printf("\n[GLOBALLIST]\n");
+    }
+    else {
+        il = localidroot->nextp;
+        printf("\n[LOCALLIST]\n");
+    }
     while(il != NULL){
-        printf("[idlist]%s\tTYPE:%d\tat line:%d\n",il->name,il->itp->ttype,il->definenum);
+        printf("NAME:%s\t",il->name);
+        printf("TYPE:%d\t",il->itp->ttype);
+        if(il->itp->ttype == TPARRAY){
+            printf("ARRAYTYPE:%d\t",il->itp->etp->ttype);
+            printf("ARRAYSIZE:%d\t",il->itp->arraysize);
+        }
+        else if(il->itp->ttype == TPPROC){
+            if(il->itp->paratp->ttype == TPARRAY){
+                printf("PROCARRAYTYPE:%d\t",il->itp->paratp->etp->ttype);
+                printf("PROCARRAYSIZE:%d\t",il->itp->paratp->etp->arraysize);
+            }
+            printf("PROCTYPE:%d\t",il->itp->paratp->ttype);
+        }
+        printf("IS_PARA:%d\t",il->is_para);
+        printf("DEFLINE:%d\t",il->definenum);
+//        printf("REFLINE:%d",il->irefp->refinenum);
+        printf("\n");
         il = il->nextp;
     }
+    printf("\n");
 }
 
 void id_countup(char *np) {	/* Register and count up the name pointed by np */

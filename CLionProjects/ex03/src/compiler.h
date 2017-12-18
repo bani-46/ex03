@@ -114,18 +114,24 @@ extern int search_namelist(char *_name);
 /* ID list */
 extern void init_globalidtab();
 extern void init_localidtab();
-struct ID *add_idlist(char *_name,
-					  char *_procname,
-					  int _type,
-					  int _ispara,
-					  int _defline,
-					  struct ID *il);
+extern struct ID *add_idlist(char *_name,
+                      char *_procname,
+                      int _type,
+                      int _ispara,
+                      int _isproc,
+                      int _defline,
+                      int _isarray,
+                      int arraysize,
+                      struct ID *il);
 extern int insert_idlist(char *_procname,
-						 int _type,
-						 int _ispara,
-						 int scope);
+                  int _type,
+                  int _ispara,
+                  int scope,
+                  int _isarray,
+                  int array_size);
 extern int search_idlist(int _scope);
-extern void print_idlist();
+extern void print_idlist(int _scope);
+extern void copy_locallist();
 
 extern void id_countup(char *np);
 extern void print_idtab();
@@ -168,4 +174,6 @@ extern int output_format();
 
 extern int error_parse(char *mes);
 extern int error_variable(char *mes);
+extern void reset_flags();
 extern void pretty_print();
+extern void reset_array();
