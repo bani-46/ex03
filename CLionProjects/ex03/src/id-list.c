@@ -13,7 +13,7 @@ struct TYPE{
 	int arraysize;/*size of array*/
 	struct TYPE *etp;/*pointer to element type if TARRAY*/
 	struct TYPE *paratp;/*pointer to parameter's type list if ttype os TPPROC*/
-};
+}*mem_proc;
 
 struct LINE{
 	int refinenum;
@@ -35,6 +35,8 @@ struct NAMELIST{
     int defline;
     struct NAMELIST *nextp;
 }*name_list;
+
+int mem_arraysize;
 
 
 void init_namelist(){
@@ -154,7 +156,7 @@ int insert_idlist(char *_procname,
                   int _ispara,
                   int scope,
                   int array_size){
-    if(search_idlist(scope)==ERROR){
+    if(is_overload(scope)==ERROR){
         return ERROR;
     }
     struct ID *il;
@@ -174,7 +176,7 @@ int insert_idlist(char *_procname,
     return NORMAL;
 }
 
-int search_idlist(int _scope){
+int is_overload(int _scope){
     struct ID *il;
     struct NAMELIST *nl;
     if(_scope == global)il =globalidroot;
@@ -184,7 +186,7 @@ int search_idlist(int _scope){
         nl = name_list->nextp;
         while(nl != NULL) {
             if(il->name == NULL)break;//todo
-            if (strcmp(nl->name, il->name) == 0) {
+            if(strcmp(nl->name, il->name) == 0) {
                 return ERROR;
             }
             nl = nl->nextp;
@@ -193,7 +195,6 @@ int search_idlist(int _scope){
     }
     return NORMAL;
 }
-
 
 void add_proc(char *_procname,int _line){
     struct ID *il,*new;
@@ -246,11 +247,13 @@ void regist_proctype(){
 
     if(ll->itp->ttype == TPPROC){
         tl = ll->itp;
-        while(p->is_para != 0){
-            new = (struct TYPE *) malloc(sizeof(struct TYPE));
-            new->ttype = p->itp->ttype;
-            tl->paratp  = new;
-            tl = tl->paratp;
+        while(p != NULL){
+            if(p->is_para) {
+                new = (struct TYPE *) malloc(sizeof(struct TYPE));
+                new->ttype = p->itp->ttype;
+                tl->paratp = new;
+                tl = tl->paratp;
+            }
             p = p->nextp;
         }
     }
@@ -309,11 +312,14 @@ int id_count(char *_name,int _scope,int _line){
     struct ID *il;
     struct LINE *new,*rl;
 
-    if(_scope == 0)il = globalidroot;
+    if(_scope == global)il = globalidroot;
     else il = localidroot;
 
     while(il != NULL){
         if(strcmp(il->name,_name) == 0){
+            if (_scope == local && il->itp->ttype == TPPROC) {
+                return ELSEERROR;
+            }
             rl = il->irefp;
             if(rl != NULL) {
                 while (rl->nextlinep != NULL) rl = rl->nextlinep;
@@ -327,9 +333,33 @@ int id_count(char *_name,int _scope,int _line){
             else{
                 rl->nextlinep = new;
             }
-            return NORMAL;
+            if(il->itp->ttype == TPARRAY){
+                mem_arraysize = il->itp->arraysize;
+                return il->itp->etp->ttype;
+            }
+            else if(il->itp->ttype == TPPROC)mem_proc = il->itp;
+            else return il->itp->ttype;
         }
         il = il->nextp;
     }
     return ERROR;
+}
+
+int check_proc_type(int exp_type){
+    if(mem_proc->paratp != NULL) {
+        if (exp_type == mem_proc->paratp->ttype) {
+            mem_proc = mem_proc->paratp;
+            return NORMAL;
+        }
+    }
+    return ERROR;
+}
+
+int is_null_proc_type(){
+    if(mem_proc->paratp == NULL)return NORMAL;
+    return ERROR;
+}
+
+int get_array_size(){
+    return mem_arraysize;
 }

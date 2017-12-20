@@ -7,6 +7,7 @@
 #define MAXNUM 32767
 
 #define NORMAL 1
+#define ELSEERROR -2
 #define ERROR -1
 
 /* Token */
@@ -128,10 +129,15 @@ extern int insert_idlist(char *_procname,
                   int _ispara,
                   int scope,
                   int array_size);
-extern int search_idlist(int _scope);
+extern int is_overload(int _scope);
+extern int search_name(int _scope, char *name);
 extern void print_idlist(int _scope);
 extern void copy_locallist();
 extern int id_count(char *_name,int _scope,int _line);
+
+extern int check_proc_type(int exp_type);
+extern int is_null_proc_type();
+extern int get_array_size();
 
 extern void id_countup(char *np);
 extern void print_idtab();

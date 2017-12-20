@@ -309,12 +309,16 @@ int statement(){//ahead_scan
 
 int condition_statement(){//ahead_scan
 	//"if" 式 "then" 文 [ "else" 文 ]
-	if(token != TIF)
+	int exp_type = 0;
+    if(token != TIF)
 		return ERROR;
 	token = scan();
 	pretty_print();
-	if(expression() == ERROR)
+    exp_type = expression();
+	if(exp_type == ERROR)
 		return error_parse("[Condition_statement]Expression is not found.");
+    else if(exp_type != TPBOOL)
+        return error_variable("[Condition_statement]Expression_type must be boolean.");
 	if(token != TTHEN)
 		return error_parse("[Condition_statement]'then' is not found.");
 	token = scan();
@@ -332,13 +336,18 @@ int condition_statement(){//ahead_scan
 
 int iteration_statement(){//ahead_scan
 	//"while" 式 "do" 文
-	if(token != TWHILE)
+	int exp_type = 0;
+
+    if(token != TWHILE)
 		return ERROR;
 	iteration_flag ++;
 	token = scan();
 	pretty_print();
-	if(expression() == ERROR)
+    exp_type = expression();
+	if(exp_type == ERROR)
 		return error_parse("[Iteration_statement]Expression is not found.");
+    else if(exp_type != TPBOOL)
+        return error_variable("[Iteration_statement]Expression_type must be boolean.");
 	if(token != TDO)
 		return error_parse("[Iteration_statement]'do' is not found.");
 	token = scan();
@@ -361,36 +370,55 @@ int exit_statement(){//ahead_scan
 
 int call_statement(){//ahead_scan
 	//"call" 手続き名 [ "(" 式の並び ")" ]
+    int search_result;
 	if(token != TCALL)
 		return ERROR;
 	token = scan();
 	pretty_print();
 	if(token != TNAME)
 		return error_parse("[Call_statement]Procedure_name is not found.");
-	token = scan();
+    search_result = id_count(string_attr,scope,get_linenum());
+    if(search_result == ELSEERROR){
+        return error_variable("[Call_statement]Can`t recursion call at same procedure.");
+    }else if(search_result != ERROR){
+        return error_variable("[Call_statement]Not Registration Procedure_name.");
+    }
+    if(is_null_proc_type() != ERROR)
+        return error_variable("[Call_statement]No match num exp_type and formal");
+    token = scan();
 	pretty_print();
 	if(token == TLPAREN){
 		token = scan();
 		pretty_print();
 		if(expressions() == ERROR)
 			return error_parse("[Call_statement]Expressions is not found.");
-		if(token != TRPAREN)
+		if(is_null_proc_type() == ERROR)
+            return error_variable("[Call_statement]No match num exp_type and formal");
+        if(token != TRPAREN)
 			return error_parse("[Call_statement]')' is not found.");
 		token = scan();
 		pretty_print();
 	}
-	return NORMAL;
+    return NORMAL;
 }
 
 int expressions(){//ahead_scan
 	// 式 { "," 式 }
-	if(expression() == ERROR)
+    int return_num = 0;
+
+    return_num = expression();
+	if(return_num == ERROR)
 		return ERROR;
+    else if(check_proc_type(return_num) == ERROR)
+        return error_variable("[Expressions]No match type exp_type and formal_type.");
 	while(token == TCOMMA){
 		token = scan();
 		pretty_print();
-		if(expression() == ERROR)
+        return_num = expression();
+		if(return_num == ERROR)
 			return error_parse("[Expressions]Expression is not found.");
+        else if(check_proc_type(return_num) == ERROR)
+            return error_variable("[Expressions]No match type exp_type and formal_type.");
 	}
 	return NORMAL;
 }
@@ -405,91 +433,182 @@ int return_statement(){//ahead_scan
 
 int assignment_statement(){//ahead_scan
 	//左辺部(＝変数) ":=" 式
-	if(variable() == ERROR)
+    int val_type = 0;
+    int exp_type = 0;
+
+    val_type = variable();
+	if(val_type == ERROR)
 		return ERROR;
+    else if(val_type > TPBOOL )
+        return error_variable("[Assignment_statement]Left side type must be standard_type.");
 	if(token != TASSIGN)
-		return error_parse("[Assinment_statement]':=' is not found.");
+		return error_parse("[Assignment_statement]':=' is not found.");
 	token = scan();
 	pretty_print();
-	if(expression() == ERROR)
-		return error_parse("[Assinment_statement]Expression is not found.");
-	return NORMAL;
+    exp_type = expression();
+	if(exp_type == ERROR)
+		return error_parse("[Assignment_statement]Expression is not found.");
+    else if(exp_type > TPBOOL)
+        return error_variable("[Assignment_statement]Right side type must be standard_type.");
+    else if(val_type != exp_type)
+        return error_variable("[Assignment_statement]No match left side and right side.");
+    return NORMAL;
 }
 
 int variable(){//ahead_scan
 	//変数名 [ "[" 式 "]" ]
+    int val_type = 0;
 	if(token != TNAME)
 		return ERROR;
-    if(id_count(string_attr,scope,get_linenum()) == ERROR){
+    val_type = id_count(string_attr,scope,get_linenum());
+    if(val_type == ERROR){
         return error_variable("[Variable]undefined variable.");
     }
 	token = scan();
 	pretty_print();
 
+    int exp_type = 0;
 	if(token == TLSQPAREN){
+        if(val_type < TPARRAY || val_type == TPPROC)
+            return error_variable("[Variable]val_name is not array");
 		token = scan();
 		pretty_print();
-		if(expression() == ERROR)
+        exp_type = expression();
+		if(exp_type == ERROR)
 			return error_parse("[Variable]Expression is not found.");
+        else if(exp_type != TPINT)
+            return error_variable("[Variable]Expression must be integer type.");
+        //todo arraysize 0~size-1
 		if(token != TRSQPAREN)
 			return error_parse("[Variable]']' is not found.");
 		token = scan();
 		pretty_print();
+        val_type -= 4;
 	}
-	return NORMAL;
+    return val_type;
 }
 
 int expression(){//ahead_scan
 	//単純式 { 関係演算子 単純式 }
-	if(simple_expression() == ERROR)
+    int return_num[2] = {0};
+    int ope_num = 0;
+
+    return_num[0] = simple_expression();
+	if(return_num[0] == ERROR)
 		return ERROR;
-	while(relational_operator() != ERROR){
+	ope_num = relational_operator();
+    while(ope_num != ERROR){
+        if(return_num[0] < TPARRAY)
+            error_variable("[Expression]When operator exist,type must be standard_type.");
 		token = scan();
 		pretty_print();
-		if(simple_expression() == ERROR)
+        return_num[1] = simple_expression();
+		if(return_num[1] == ERROR)
 			return error_parse("[Expression]Simple_expression is not found.");
+        else if(return_num[0] != return_num[1])
+            return  error_variable("[Expression]When operator exist,all type must be same.");
+        ope_num = relational_operator();
 	}
-	return NORMAL;
+    if(return_num[1] == 0)
+        return return_num[0];
+    else return TPBOOL;
 }
 
 int simple_expression(){//ahead_scan
 	// [ "+" | "-" ] 項 { 加法演算子 項 }
+    int return_num = 0;
+    int is_operator = 0;
+    int ope_num = 0;
 	if(token == TPLUS || token == TMINUS){
 		token = scan();
 		pretty_print();
+        is_operator = 1;
 	}
-	if(term() == ERROR)
+    return_num = term();
+	if(return_num == ERROR)
 		return error_parse("[Simple_expression]Term is not found.");
-	while(addictive_operator() != ERROR){
-		token = scan();
-		pretty_print();
-		if(term() == ERROR)
-			return error_parse("[Simple_expression]Term is not found.");
+    else if(is_operator && return_num != TPINT)
+        return  error_variable("[Simple_expression]When operator exist,type must be integer.");
+
+    ope_num = addictive_operator();
+    while(ope_num != ERROR){
+        if(ope_num == TPLUS || ope_num == TMINUS){
+            if(return_num != TPINT)
+                error_variable("[Simple_expression]Operand must be integer.");
+            token = scan();
+            pretty_print();
+            return_num = term();
+            if(return_num == ERROR)
+                return error_parse("[Simple_expression]Term is not found.");
+            else if(return_num != TPINT)
+                error_variable("[Simple_expression]Operand must be integer.");
+        }
+        else if(ope_num == TOR) {
+            if(return_num != TPBOOL)
+                error_variable("[Simple_expression]Operand must be boolean.");
+            token = scan();
+            pretty_print();
+            return_num = term();
+            if(return_num == ERROR)
+                return error_parse("[Simple_expression]Term is not found.");
+            else if(return_num != TPBOOL)
+                error_variable("[Simple_expression]Operand must be boolean.");
+        }
+        ope_num = addictive_operator();
 	}
-	return NORMAL;
+	return return_num;
 }
 
 int term(){//ahead_scan
 	// 因子 { 乗法演算子 因子 }
-	if(factor() == ERROR)
+    int return_num = 0;
+    int ope_num = 0;
+
+    return_num = factor();
+	if(return_num == ERROR)
 		return ERROR;
-	while(multiplicative_operator() != ERROR){
-		token = scan();
-		pretty_print();
-		if(factor() == ERROR)
-			return error_parse("[Term]Factor is not found.");
+    ope_num = multiplicative_operator();
+	while(ope_num != ERROR){
+        if(ope_num == TSTAR || ope_num == TDIV){
+            if(return_num != TPINT)
+                return error_variable("[Term][* or /]Operand must be integer.");
+            token = scan();
+            pretty_print();
+            return_num = factor();
+            if(return_num == ERROR)
+                return error_parse("[Term]Factor is not found.");
+            else if(return_num != TPINT)
+                return  error_variable("[Term][* or /]Operand must be integer.");
+        }
+        else if(ope_num == TAND) {
+            if(return_num != TPBOOL)
+                return error_variable("[Term][* or /]Operand must be boolean.");
+            token = scan();
+            pretty_print();
+            return_num = factor();
+            if(return_num == ERROR)
+                return error_parse("[Term]Factor is not found.");
+            else if(return_num != TPBOOL)
+                return  error_variable("[Term][* or /]Operand must be boolean.");
+        }
+        ope_num = multiplicative_operator();
 	}
-	return NORMAL;
+	return return_num;
 }
 
 int factor(){//ahead_scan
 	// 変数 | 定数 | "(" 式 ")" | "not" 因子 | 標準型 "(" 式 ")"
-	if(variable() == ERROR){
-		if(constant() == ERROR){
+    int return_num = 0;
+    int std_type = 0;
+    return_num = variable();
+	if(return_num == ERROR){
+        return_num = constant();
+		if(return_num == ERROR){
 			if(token == TLPAREN){
 				token = scan();
 				pretty_print();
-				if(expression() == ERROR)
+                return_num = expression();
+				if(return_num == ERROR)
 					return error_parse("[Factor]Expression is not found.");
 				if(token != TRPAREN)
 					return error_parse("[Factor]')'is not found.");
@@ -499,18 +618,24 @@ int factor(){//ahead_scan
 			else if(token == TNOT){
 				token = scan();
 				pretty_print();
-				if(factor() == ERROR)
+                return_num = factor();
+				if(return_num == ERROR)
 					return error_parse("[Factor]Factor is not found.");
+                else if(return_num !=TPBOOL)
+                    return error_variable("[Factor]'Not factor' is must be boolean.");
 			}
-			else if(standard_type() == NORMAL){
+			else if((return_num = standard_type()) == NORMAL){
 				token = scan();
 				pretty_print();
 				if(token != TLPAREN)
 					return error_parse("[Factor]'('is not found.");
 				token = scan();
 				pretty_print();
-				if(expression() == ERROR)
+                std_type = expression();
+				if(std_type == ERROR)
 					return error_parse("[Factor]Expression is not found.");
+                else if(std_type >TPBOOL)
+                    return error_variable("[Factor]'Standard_type(expression)'is must be standard_type.");
 				if(token != TRPAREN)
 					return error_parse("[Factor]')'is not found.");
 				token = scan();
@@ -519,46 +644,66 @@ int factor(){//ahead_scan
 			else return ERROR;
 		}
 	}
-	return NORMAL;
+	return return_num;
 }
 
 int constant(){//ahead_scan
 	//符号なし整数" | "false" | "true" | "文字列"
-	if(token != TNUMBER && token != TFALSE && token != TTRUE && token != TSTRING)
-		return ERROR;
+    int return_num = 0;
+
+    char string_copy[MAXSTRSIZE];
+    int j = 0;
+    while(1){
+        if(string_attr[j+2] == '\0'){
+            string_copy[j] = '\0';
+            break;
+        }
+        string_copy[j] = string_attr[j+1];
+        j++;
+    }
+
+    if(token == TNUMBER)return_num =  TPINT;
+    else if(token == TFALSE || token == TTRUE)return_num = TPBOOL;
+    else if(token == TSTRING){
+        if(strlen(string_copy) != 1)error_variable("[Constant]String length must be 1");
+        else return_num = TCHAR;
+    }
+    else return ERROR;
 	token = scan();
 	pretty_print();
-	return NORMAL;
+	return return_num;
 }
 
 int multiplicative_operator(){
 	//"*" | "div" | "and"
-	if(token != TSTAR && token != TDIV && token !=TAND)
-		return ERROR;
-	return NORMAL;
+    if(token == TSTAR)return TSTAR;
+    else if(token == TDIV)return TDIV;
+    else if(token == TAND)return TAND;
+    else return ERROR;
 }
 
 int addictive_operator(){
 	//"+" | "-" | "or"
-	if(token != TPLUS && token != TMINUS && token !=TOR)
-		return ERROR;
-	return NORMAL;
+    if(token == TPLUS)return TPLUS;
+    else if(token == TMINUS)return TMINUS;
+    else if(token == TOR)return TOR;
+    else return ERROR;
 }
 
 int relational_operator(){
 	//"=" | "<>" | "<" | "<=" | ">" | ">="
-	if(token != TEQUAL &&
-			token != TNOTEQ &&
-			token !=TLE &&
-			token !=TLEEQ &&
-			token !=TGR &&
-			token !=TGREQ)
-		return ERROR;
-	return NORMAL;
+    if(token == TEQUAL)return TEQUAL;
+    else if(token == TNOTEQ)return TNOTEQ;
+    else if(token == TLE)return TLE;
+    else if(token == TLEEQ)return TLEEQ;
+    else if(token == TGR)return TGR;
+    else if(token == TGREQ)return TGREQ;
+    else return ERROR;
 }
 
 int input_statement(){//ahead_scan
 	//("read" | "readln") [ "(" 変数 { "," 変数 } ")" ]
+    int val_type = 0;
 	if(token != TREAD && token != TREADLN)
 		return ERROR;
 	token = scan();
@@ -566,15 +711,21 @@ int input_statement(){//ahead_scan
 	if(token == TLPAREN){
 		token = scan();
 		pretty_print();
-		if(variable() == ERROR)
+        val_type = variable();
+		if(val_type == ERROR)
 			return error_parse("[Input_statement]Variable is not found.");
+        else if(!(val_type == TPINT || val_type == TPCHAR))
+            return error_variable("[Input_statement]Variable must be integer or char.");
 		while(token != TRPAREN){
 			if(token != TCOMMA)
 				return error_parse("[Input_statement]',' is not found.");
 			token = scan();
 			pretty_print();
-			if(variable() == ERROR)
+            val_type = variable();
+			if(val_type == ERROR)
 				return error_parse("[Input_statement]Variable is not found.");
+            else if(!(val_type == TPINT || val_type == TPCHAR))
+                return error_variable("[Input_statement]Variable must be integer or char.");
 		}
 		token = scan();
 		pretty_print();
@@ -612,6 +763,7 @@ int output_format(){//ahead_scan
 	/*string_attrから''を削除*/
 	char string_copy[MAXSTRSIZE];
 	int j = 0;
+    int exp_type = 0;
 	while(1){
 		if(string_attr[j+2] == '\0'){
 			string_copy[j] = '\0';
@@ -627,7 +779,8 @@ int output_format(){//ahead_scan
 		pretty_print();
 		return NORMAL;
 	}
-	else if(expression() != ERROR){
+	else if((exp_type = expression()) != ERROR){
+        if(exp_type > TPBOOL)return error_variable("[Output_format]Expression type must be standard_type.");
 		if(token == TCOLON){
 			token = scan();
 			pretty_print();
