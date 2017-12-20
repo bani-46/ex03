@@ -61,7 +61,6 @@ int block(){
 	return NORMAL;
 }
 //todo
-int is_array = 0;
 int is_para = var;
 int scope = global;
 int array_size;
@@ -88,7 +87,7 @@ int variable_declaration(){//ahead_scan
 		if(token != TSEMI)
 			return error_parse("[Variable_declation]';' is not found.");
 
-        if((insert_idlist(procname,mem_type,is_para,scope,is_array,array_size)) == ERROR){
+        if((insert_idlist(procname,mem_type,is_para,scope,array_size)) == ERROR){
             return error_variable("[Variable_declation]Overload.");
         }
         token = scan();
@@ -127,9 +126,7 @@ int type(){//ahead_scan
 	/*標準型|配列型*/
     int return_num;
     if((return_num = standard_type()) == ERROR) {
-        is_array = 1;
         if ((return_num = array_type()) == ERROR) {
-            is_array = 0;
             return ERROR;
         }
     }
@@ -180,12 +177,22 @@ int array_type(){
 	token = scan();
 	pretty_print();
     return_num = standard_type();
+    switch(return_num){
+        case TPINT:
+            return_num = TPARRAYINT;
+            break;
+        case TPCHAR:
+            return_num = TPARRAYCHAR;
+            break;
+        case TPBOOL:
+            return_num = TPARRAYBOOL;
+    }
 	return return_num;
 }
 
 int subprogram_declaration(){//ahead_scan
 	//"procedure" 手続き名 [ 仮引数部 ] ";" [ 変数宣言部 ] 複合文 ";"
-	if(token != TPROCEDURE)
+    if(token != TPROCEDURE)
 		return ERROR;
     scope = local;
     token = scan();
@@ -193,6 +200,7 @@ int subprogram_declaration(){//ahead_scan
 	if(token != TNAME)
 		return error_parse("[Subprogram_declation]Procedure name is not found.");
 	strcpy(procname,string_attr);
+    add_proc(procname,get_linenum());
     token = scan();
 	pretty_print();
 	if(token != TSEMI && formal_parameters()!= ERROR){
@@ -244,9 +252,9 @@ int formal_parameters(){//ahead_scan
         mem_type = type();
         if (mem_type == ERROR)
             return error_parse("[Formal_parameters]Type is not found.");
-        if(is_array)
+        if(!(mem_type < TPARRAY))
             return error_variable("[Formal_parameters]Can`t use arraytype.");
-        if((insert_idlist(procname, mem_type, is_para, scope, is_array, array_size))==ERROR){
+        if((insert_idlist(procname, mem_type, is_para, scope, array_size))==ERROR){
             return error_variable("[Formal_parameters]Overload.");
         }
         reset_array();
@@ -412,15 +420,17 @@ int variable(){//ahead_scan
 	//変数名 [ "[" 式 "]" ]
 	if(token != TNAME)
 		return ERROR;
+    if(id_count(string_attr,scope,get_linenum()) == ERROR){
+        return error_variable("[Variable]undefined variable.");
+    }
 	token = scan();
 	pretty_print();
+
 	if(token == TLSQPAREN){
 		token = scan();
 		pretty_print();
 		if(expression() == ERROR)
 			return error_parse("[Variable]Expression is not found.");
-//		token = scan();//todo
-//		pretty_print();
 		if(token != TRSQPAREN)
 			return error_parse("[Variable]']' is not found.");
 		token = scan();
@@ -755,7 +765,6 @@ int error_variable(char *mes){
 }
 
 void reset_flags(){
-    is_array = 0;
     array_size = 0;
     is_para = var;
     scope = global;
@@ -763,6 +772,5 @@ void reset_flags(){
 }
 
 void reset_array(){
-    is_array = 0;
     array_size = 0;
 }

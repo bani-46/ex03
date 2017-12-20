@@ -118,20 +118,20 @@ extern struct ID *add_idlist(char *_name,
                       char *_procname,
                       int _type,
                       int _ispara,
-                      int _isproc,
                       int _defline,
-                      int _isarray,
                       int arraysize,
                       struct ID *il);
+extern void add_proc(char *_procname,int _line);
+extern void regist_proctype();
 extern int insert_idlist(char *_procname,
                   int _type,
                   int _ispara,
                   int scope,
-                  int _isarray,
                   int array_size);
 extern int search_idlist(int _scope);
 extern void print_idlist(int _scope);
 extern void copy_locallist();
+extern int id_count(char *_name,int _scope,int _line);
 
 extern void id_countup(char *np);
 extern void print_idtab();
