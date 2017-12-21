@@ -28,7 +28,7 @@ struct ID {
 	int definenum;
 	struct LINE *irefp;
 	struct ID *nextp;
-}  *globalidroot,*localidroot;
+}  *globalidroot,*localidroot,*sortedidroot;
 
 struct NAMELIST{
     char *name;
@@ -215,6 +215,7 @@ void add_proc(char *_procname,int _line){
     new->procname = pc;
     new->itp = typelist;
     new->itp->ttype = TPPROC;
+    new->itp->paratp = NULL;
     new->is_para = 0;
     new->definenum = _line;
     new->nextp = NULL;
@@ -362,4 +363,142 @@ int is_null_proc_type(){
 
 int get_array_size(){
     return mem_arraysize;
+}
+
+void sort_list(){
+    struct ID *gl,*sl,*p,*mem_p,*new;
+    sl = add_idlist("\0","\0",0,0,0,0,NULL);
+    sortedidroot = sl;
+    gl = globalidroot->nextp;
+    while(gl != NULL){
+        p = gl;
+        mem_p = gl;
+        while(p != NULL){
+            if(strcmp(mem_p->name,p->name) > 0) {
+                mem_p = p;
+            }
+            p = p->nextp;
+        }
+        new = (struct ID *)malloc(sizeof(struct ID));
+        new->name = mem_p->name;
+        new->procname = mem_p->procname;
+        new->itp = mem_p->itp;
+        new->is_para = mem_p->is_para;
+        new->definenum = mem_p->definenum;
+        new->irefp = mem_p->irefp;
+
+        sl->nextp = new;
+        sl = sl->nextp;
+        /*切り離し*/
+        delete_list(mem_p);
+
+        gl = globalidroot->nextp;
+    }
+    sl->nextp = NULL;
+}
+
+void delete_list(struct ID *p){
+    struct ID *gl = globalidroot;
+    struct ID *temp;
+    while(gl->nextp != NULL && gl->nextp != p)gl = gl->nextp;
+    temp = gl->nextp;
+    gl->nextp = temp->nextp;
+    free(temp);
+}
+
+void print_sortedlist(){
+    struct ID *il;
+    struct TYPE *tl;
+    struct LINE *rl;
+
+    char str[256];
+    int str_size = 0;
+    int sp_num = 0;
+
+    il = sortedidroot->nextp;
+    printf("\n---------------------------------------------------------------------\n");
+    printf("Name\t\t\tType\t\t\t\t\t\t\t\tDef.\tRef.\n");
+    while(il != NULL){
+        str_size = 0;
+        sp_num = 0;
+        rl = il->irefp;
+        printf("%-12s\t",il->name);
+        if(il->itp->ttype == TPARRAY){
+            sprintf(str,"array [%d] of %s\t",
+                    il->itp->arraysize,
+                    typestr[il->itp->etp->ttype -4]);
+            printf("%s",str);
+            str_size += strlen(str);
+            sp_num = 39 -str_size;
+            while(sp_num > 0){
+                printf(" ");
+                sp_num --;
+            }
+        }
+        else if(il->itp->ttype == TPPROC){
+            printf("procedure");
+            tl = il->itp;
+            if(tl->paratp != NULL) {
+                sp_num -= 2;
+                printf("(");
+                while (tl->paratp != NULL) {
+                    sprintf(str, "%s,", typestr[tl->paratp->ttype]);
+                    printf("%s", str);
+                    str_size += strlen(str);
+                    tl = tl->paratp;
+                }
+                printf("\b)");
+            }
+            sp_num += 39 - str_size - 9;
+            while(sp_num > 0){
+                printf(" ");
+                sp_num --;
+            }
+            printf("\t");
+        }
+        else{
+            printf("%-36s\t",typestr[il->itp->ttype]);
+        }
+        printf("%d|\t",il->definenum);
+        while(rl != NULL) {
+            printf("%d,", rl->refinenum);
+            rl = rl->nextlinep;
+        }
+        printf("\b");
+        printf("\n");
+        il = il->nextp;
+    }
+    printf("---------------------------------------------------------------------\n");
+    printf("\n");
+}
+
+void free_lists(){
+    struct ID *il,*temp;
+    struct NAMELIST *nl,*temp_nl;
+    int n = 0;
+    while(n < 3){
+        switch (n){
+            case 0:
+                il = globalidroot;
+                break;
+            case 1:
+                il = localidroot;
+                break;
+            case 2:
+                il = sortedidroot;
+                break;
+        }
+        while(il != NULL){
+            temp = il->nextp;
+            free(il);
+            il = temp;
+        }
+        n ++;
+    }
+    nl = name_list;
+    while(nl != NULL){
+        temp_nl = nl->nextp;
+        free(nl);
+        nl = temp_nl;
+    }
 }

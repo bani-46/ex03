@@ -46,8 +46,11 @@ int parse_program(){//ahead_scan
 	else{
 		printf("\n\n[Result]Final read:EOF\n");
 	}
-    print_idlist(local);
-    print_idlist(global);
+//    print_idlist(local);
+//    print_idlist(global);
+    sort_list();
+    print_sortedlist();
+    free_lists();
 	return NORMAL;
 }
 
@@ -65,6 +68,8 @@ int is_para = var;
 int scope = global;
 int array_size;
 char procname[MAXSTRSIZE];
+int is_minus = 0;
+int is_int_constant = 0;
 
 int variable_declaration(){//ahead_scan
 	/*var 変数名の並び : 型 ; {変数名の並び : 型 ;}*/
@@ -479,6 +484,10 @@ int variable(){//ahead_scan
         else if(exp_type != TPINT)
             return error_variable("[Variable]Expression must be integer type.");
         //todo arraysize 0~size-1
+		else if(is_int_constant)
+			return error_variable("[Variable]Array subscript is too small.");
+        else if(num_attr > get_array_size()-1)
+                return error_variable("[Variable]Array subscript is too big.");
 		if(token != TRSQPAREN)
 			return error_parse("[Variable]']' is not found.");
 		token = scan();
@@ -519,7 +528,9 @@ int simple_expression(){//ahead_scan
     int return_num = 0;
     int is_operator = 0;
     int ope_num = 0;
+	is_minus = 0;
 	if(token == TPLUS || token == TMINUS){
+		if(token == TMINUS)is_minus = 1;
 		token = scan();
 		pretty_print();
         is_operator = 1;
@@ -650,6 +661,7 @@ int factor(){//ahead_scan
 int constant(){//ahead_scan
 	//符号なし整数" | "false" | "true" | "文字列"
     int return_num = 0;
+	is_int_constant = 0;
 
     char string_copy[MAXSTRSIZE];
     int j = 0;
@@ -662,7 +674,10 @@ int constant(){//ahead_scan
         j++;
     }
 
-    if(token == TNUMBER)return_num =  TPINT;
+    if(token == TNUMBER){
+		if(is_minus)is_int_constant = 1;
+		return_num =  TPINT;
+	}
     else if(token == TFALSE || token == TTRUE)return_num = TPBOOL;
     else if(token == TSTRING){
         if(strlen(string_copy) != 1)error_variable("[Constant]String length must be 1");
@@ -796,115 +811,115 @@ int output_format(){//ahead_scan
 }
 
 void pretty_print(){
-	static int compound_flag = 0;
-	static int begin_flag = 0;
-	static int indention_flag = 0;
-	static int procedure_flag = 0;
-	static int var_flag = 0;
-	static int var_semi_flag = 0;
-
-	/*変数宣言部内の;では改行しない*/
-	if(var_semi_flag == 1){
-		if(token != TNAME){
-			printf("\n");
-			var_flag = 0;
-		}
-		var_semi_flag = 0;
-	}
-
-	/*段付け*/
-	int i = 0;
-	if(compound_flag > 0) {
-		if(begin_flag == 1 || indention_flag == 1){
-			while(i<compound_flag){
-				printf("    ");//SP*4
-				i++;
-			}
-			if(begin_flag == 1) begin_flag = 0;
-			if(indention_flag == 1) indention_flag = 0;
-		}
-	}
-
-	switch(token){
-	/*NAME or STRING*/
-	case TNAME:
-	case TSTRING:
-		printf("%s ",string_attr);
-		break;
-	/*NUMBER*/
-	case TNUMBER:
-		printf("%d ",num_attr);
-		break;
-	/*;*/
-	case TSEMI:
-		/*複合文内の;の時、改行後の段付用のフラグを立てる*/
-		if(compound_flag > 0 ) indention_flag = 1;
-		/*変数宣言部内の;のときは改行しない*/
-		if(var_flag == 1){
-			var_semi_flag = 1;
-			printf("\b%s",tokenstr[token]);
-		}
-		else{
-			printf("\b%s\n",tokenstr[token]);
-		}
-		break;
-	/*begin*/
-	case TBEGIN:
-		compound_flag ++;
-		begin_flag = 1;
-		printf("%s\n",tokenstr[token]);
-		break;
-	/*end*/
-	case TEND:
-		compound_flag --;
-		printf("\n");
-
-		i = 0;
-		while(i<compound_flag){
-			printf("    ");//SP*4
-			i++;
-		}
-
-		/*副プログラム宣言の段付解除*/
-		if(compound_flag == 1 && procedure_flag){
-			compound_flag--;
-			procedure_flag = 0;
-		}
-		printf("%s ",tokenstr[token]);
-		break;
-	/*else*/
-	case TELSE:
-		printf("\n");
-		i = 0;
-		while(i<compound_flag){
-			printf("    ");//SP*4
-			i++;
-		}
-		printf("%s ",tokenstr[token]);
-		break;
-    /*procedure*/
-	case TPROCEDURE:
-		compound_flag ++;
-		procedure_flag = 1;
-		printf("    %s ",tokenstr[token]);
-		break;
-    /*.*/
-	case TDOT:
-		printf("\b%s",tokenstr[token]);
-		break;
-    /*var*/
-	case TVAR:
-		printf("    %s ",tokenstr[token]);
-		var_flag = 1;
-		break;
-
-	default:
-		if(token > 0){
-			printf("%s ",tokenstr[token]);
-		}
-		break;
-	}
-
+//	static int compound_flag = 0;
+//	static int begin_flag = 0;
+//	static int indention_flag = 0;
+//	static int procedure_flag = 0;
+//	static int var_flag = 0;
+//	static int var_semi_flag = 0;
+//
+//	/*変数宣言部内の;では改行しない*/
+//	if(var_semi_flag == 1){
+//		if(token != TNAME){
+//			printf("\n");
+//			var_flag = 0;
+//		}
+//		var_semi_flag = 0;
+//	}
+//
+//	/*段付け*/
+//	int i = 0;
+//	if(compound_flag > 0) {
+//		if(begin_flag == 1 || indention_flag == 1){
+//			while(i<compound_flag){
+//				printf("    ");//SP*4
+//				i++;
+//			}
+//			if(begin_flag == 1) begin_flag = 0;
+//			if(indention_flag == 1) indention_flag = 0;
+//		}
+//	}
+//
+//	switch(token){
+//	/*NAME or STRING*/
+//	case TNAME:
+//	case TSTRING:
+//		printf("%s ",string_attr);
+//		break;
+//	/*NUMBER*/
+//	case TNUMBER:
+//		printf("%d ",num_attr);
+//		break;
+//	/*;*/
+//	case TSEMI:
+//		/*複合文内の;の時、改行後の段付用のフラグを立てる*/
+//		if(compound_flag > 0 ) indention_flag = 1;
+//		/*変数宣言部内の;のときは改行しない*/
+//		if(var_flag == 1){
+//			var_semi_flag = 1;
+//			printf("\b%s",tokenstr[token]);
+//		}
+//		else{
+//			printf("\b%s\n",tokenstr[token]);
+//		}
+//		break;
+//	/*begin*/
+//	case TBEGIN:
+//		compound_flag ++;
+//		begin_flag = 1;
+//		printf("%s\n",tokenstr[token]);
+//		break;
+//	/*end*/
+//	case TEND:
+//		compound_flag --;
+//		printf("\n");
+//
+//		i = 0;
+//		while(i<compound_flag){
+//			printf("    ");//SP*4
+//			i++;
+//		}
+//
+//		/*副プログラム宣言の段付解除*/
+//		if(compound_flag == 1 && procedure_flag){
+//			compound_flag--;
+//			procedure_flag = 0;
+//		}
+//		printf("%s ",tokenstr[token]);
+//		break;
+//	/*else*/
+//	case TELSE:
+//		printf("\n");
+//		i = 0;
+//		while(i<compound_flag){
+//			printf("    ");//SP*4
+//			i++;
+//		}
+//		printf("%s ",tokenstr[token]);
+//		break;
+//    /*procedure*/
+//	case TPROCEDURE:
+//		compound_flag ++;
+//		procedure_flag = 1;
+//		printf("    %s ",tokenstr[token]);
+//		break;
+//    /*.*/
+//	case TDOT:
+//		printf("\b%s",tokenstr[token]);
+//		break;
+//    /*var*/
+//	case TVAR:
+//		printf("    %s ",tokenstr[token]);
+//		var_flag = 1;
+//		break;
+//
+//	default:
+//		if(token > 0){
+//			printf("%s ",tokenstr[token]);
+//		}
+//		break;
+//	}
+//
 }
 
 int error_parse(char *mes){
@@ -913,7 +928,10 @@ int error_parse(char *mes){
 }
 
 int error_variable(char *mes){
+	printf("[INFO]Program halted at line %d.\n",get_linenum());
     printf("\n[VARIABLE_ERROR]%s\n",mes);
+	end_scan();
+    exit(0);
     return ERROR;
 }
 

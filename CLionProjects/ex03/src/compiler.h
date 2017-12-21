@@ -138,6 +138,10 @@ extern int id_count(char *_name,int _scope,int _line);
 extern int check_proc_type(int exp_type);
 extern int is_null_proc_type();
 extern int get_array_size();
+extern void sort_list();
+extern void print_sortedlist();
+extern void delete_list(struct ID *p);
+extern void free_lists();
 
 extern void id_countup(char *np);
 extern void print_idtab();
